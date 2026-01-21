@@ -22,6 +22,16 @@ export default function Page1() {
     }
   }
 
+  // 파일 삭제 핸들러
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
+    setRawData(null)
+    setInsight(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+  }
+
   // 파일 업로드 영역 클릭 핸들러
   const handleUploadAreaClick = () => {
     fileInputRef.current?.click()
@@ -89,52 +99,94 @@ export default function Page1() {
         </div>
 
         {/* 파일 업로드 영역 */}
-        <div
-          onClick={handleUploadAreaClick}
-          className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors"
-        >
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,.xls"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-          <div className="space-y-2">
-            <svg
-              className="mx-auto h-12 w-12 text-gray-400"
-              stroke="currentColor"
-              fill="none"
-              viewBox="0 0 48 48"
-              aria-hidden="true"
-            >
-              <path
-                d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                strokeWidth={2}
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-            <div className="text-sm text-gray-600">
-              {selectedFile ? (
-                <span className="font-medium text-gray-900">{selectedFile.name}</span>
-              ) : (
-                <>
-                  <span className="font-medium text-blue-600">클릭하여 파일 업로드</span>
-                  <span> 또는 드래그 앤 드롭</span>
-                </>
-              )}
+        {selectedFile ? (
+          <div className="border-2 border-solid border-blue-300 bg-blue-50 rounded-lg p-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <svg
+                  className="h-10 w-10 text-blue-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                  />
+                </svg>
+                <div>
+                  <p className="text-sm font-medium text-gray-900">업로드된 파일</p>
+                  <p className="text-base font-semibold text-blue-700">{selectedFile.name}</p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(selectedFile.size / 1024).toFixed(2)} KB
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleRemoveFile}
+                className="p-2 rounded-full hover:bg-blue-100 transition-colors"
+                title="파일 삭제"
+              >
+                <svg
+                  className="h-6 w-6 text-gray-600 hover:text-red-600"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
+                </svg>
+              </button>
             </div>
-            <p className="text-xs text-gray-500">XLSX, XLS 파일만 업로드 가능</p>
           </div>
-        </div>
+        ) : (
+          <div
+            onClick={handleUploadAreaClick}
+            className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center cursor-pointer hover:border-gray-400 hover:bg-gray-50 transition-colors"
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <div className="space-y-2">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                stroke="currentColor"
+                fill="none"
+                viewBox="0 0 48 48"
+                aria-hidden="true"
+              >
+                <path
+                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                  strokeWidth={2}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              <div className="text-sm text-gray-600">
+                <span className="font-medium text-blue-600">클릭하여 파일 업로드</span>
+                <span> 또는 드래그 앤 드롭</span>
+              </div>
+              <p className="text-xs text-gray-500">XLSX, XLS 파일만 업로드 가능</p>
+            </div>
+          </div>
+        )}
 
         {/* 버튼 영역 */}
         <div className="flex gap-4">
           <Button
             onClick={handleAnalyze}
             disabled={!selectedFile || isAnalyzing}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 disabled:hover:bg-gray-300"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
             size="lg"
           >
             {isAnalyzing ? '분석 중...' : '분석'}
@@ -143,7 +195,7 @@ export default function Page1() {
           <Button
             onClick={handleDownload}
             disabled={!rawData || !insight}
-            className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-300 disabled:hover:bg-gray-300"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
             size="lg"
           >
             분석 파일 다운로드

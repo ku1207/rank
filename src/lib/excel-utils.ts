@@ -272,7 +272,10 @@ function createDashboardSheet(
   sheetData.push([])
 
   sheetData.push(['입찰 전략'])
-  sheetData.push([insight.action_items])
+  // action_items가 배열이므로 각 항목을 개별 행으로 추가
+  insight.action_items.forEach(item => {
+    sheetData.push([item])
+  })
 
   // 워크시트 생성
   const worksheet = XLSX.utils.aoa_to_sheet(sheetData)
