@@ -134,7 +134,7 @@ export default function Page1() {
           <Button
             onClick={handleAnalyze}
             disabled={!selectedFile || isAnalyzing}
-            className="flex-1"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 disabled:hover:bg-gray-300"
             size="lg"
           >
             {isAnalyzing ? '분석 중...' : '분석'}
@@ -143,8 +143,7 @@ export default function Page1() {
           <Button
             onClick={handleDownload}
             disabled={!rawData || !insight}
-            variant="outline"
-            className="flex-1"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-300 disabled:hover:bg-gray-300"
             size="lg"
           >
             분석 파일 다운로드
