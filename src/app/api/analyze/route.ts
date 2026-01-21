@@ -30,7 +30,7 @@ const ANALYSIS_PROMPT = `당신은 디지털 마케팅(검색광고) 실무 컨�
 - media_asymmetry: PC/Mobile 간 성과 비대칭이 큰 키워드·광고주 패턴과 그 의미
 - competitor_dynamics: 경쟁 강도가 높은 구간/키워드/매체(입찰 격전/집중 경쟁/급변 구간)와 대응 방향
 - golden_time: '기회 시간대'(경쟁 약화/미노출 증가 등)와 활용 제안(공격/방어 관점 중 1개 이상)
-- action_items: 실무자가 즉시 검토할 1~2가지(예: 매체별 입찰/예산 분리, 특정 시간대 데이파팅 테스트, 특정 광고주/키워드 모니터링 강화 등)
+- action_items: 실무자가 즉시 검토할 4~5가지(예: 매체별 입찰/예산 분리, 특정 시간대 운영 테스트, 특정 광고주/키워드 모니터링 강화 등)
 
 ##출력 형식(반드시 JSON만 출력, 다른 텍스트 금지)
 {
@@ -38,7 +38,7 @@ const ANALYSIS_PROMPT = `당신은 디지털 마케팅(검색광고) 실무 컨�
 "media_asymmetry": "...",
 "competitor_dynamics": "...",
 "golden_time": "...",
-"action_items": "..."
+"action_items": ["..."]
 }`
 
 export async function POST(request: NextRequest) {
