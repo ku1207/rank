@@ -2,13 +2,14 @@
 
 import { useState, useRef } from 'react'
 import { Button } from '@/components/ui/button'
-import { excelToJson, analyzeData, jsonToExcel, downloadFile } from '@/lib/excel-utils'
-import type { AnalysisResult } from '@/types/competitor-rank'
+import { excelToJson, jsonToExcel, downloadFile } from '@/lib/excel-utils'
+import type { CompetitorRankData, ClaudeInsight } from '@/types/competitor-rank'
 
 export default function Page1() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
-  const [analysisResult, setAnalysisResult] = useState<AnalysisResult[] | null>(null)
+  const [rawData, setRawData] = useState<CompetitorRankData[] | null>(null)
+  const [insight, setInsight] = useState<ClaudeInsight | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // 파일 선택 핸들러
@@ -16,7 +17,8 @@ export default function Page1() {
     const file = e.target.files?.[0]
     if (file) {
       setSelectedFile(file)
-      setAnalysisResult(null) // 새 파일 선택 시 이전 분석 결과 초기화
+      setRawData(null)
+      setInsight(null)
     }
   }
 
@@ -33,15 +35,33 @@ export default function Page1() {
     try {
       // 1. 엑셀 파일을 JSON으로 변환
       const jsonData = await excelToJson(selectedFile)
+      setRawData(jsonData)
 
-      // 2. 데이터 분석
-      const result = analyzeData(jsonData)
+      // 2. Claude API를 호출하여 인사이트 생성
+      const response = await fetch('/api/analyze', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ data: jsonData }),
+      })
 
-      // 3. 분석 결과 저장
-      setAnalysisResult(result)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'API 호출 실패')
+      }
+
+      const { insight: claudeInsight } = await response.json()
+      setInsight(claudeInsight)
     } catch (error) {
       console.error('분석 중 오류 발생:', error)
-      alert('파일 분석 중 오류가 발생했습니다.')
+      alert(
+        error instanceof Error
+          ? `분석 중 오류 발생: ${error.message}`
+          : '파일 분석 중 오류가 발생했습니다.'
+      )
+      setRawData(null)
+      setInsight(null)
     } finally {
       setIsAnalyzing(false)
     }
@@ -49,13 +69,13 @@ export default function Page1() {
 
   // 분석 파일 다운로드 핸들러
   const handleDownload = () => {
-    if (!analysisResult) return
+    if (!rawData || !insight) return
 
     // 3. 분석 결과를 엑셀로 변환
-    const excelBlob = jsonToExcel(analysisResult)
+    const excelBlob = jsonToExcel(rawData, insight)
 
     // 4. 파일 다운로드
-    const filename = `분석결과_${new Date().toISOString().split('T')[0]}.xlsx`
+    const filename = `경쟁사_순위_분석_${new Date().toISOString().split('T')[0]}.xlsx`
     downloadFile(excelBlob, filename)
   }
 
@@ -114,7 +134,7 @@ export default function Page1() {
           <Button
             onClick={handleAnalyze}
             disabled={!selectedFile || isAnalyzing}
-            className="flex-1"
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-300 disabled:hover:bg-gray-300"
             size="lg"
           >
             {isAnalyzing ? '분석 중...' : '분석'}
@@ -122,9 +142,8 @@ export default function Page1() {
 
           <Button
             onClick={handleDownload}
-            disabled={!analysisResult}
-            variant="outline"
-            className="flex-1"
+            disabled={!rawData || !insight}
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-300 disabled:hover:bg-gray-300"
             size="lg"
           >
             분석 파일 다운로드
@@ -132,10 +151,13 @@ export default function Page1() {
         </div>
 
         {/* 분석 결과 표시 */}
-        {analysisResult && (
+        {rawData && insight && (
           <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-lg">
             <p className="text-green-800 font-medium">
-              ✓ 분석 완료: {analysisResult.length}개의 데이터가 분석되었습니다.
+              ✓ 분석 완료: {rawData.length}개의 데이터가 분석되었습니다.
+            </p>
+            <p className="text-green-700 text-sm mt-2">
+              AI 인사이트가 생성되었습니다. 다운로드하여 확인하세요.
             </p>
           </div>
         )}
