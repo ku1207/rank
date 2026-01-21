@@ -1,5 +1,5 @@
 import * as XLSX from 'xlsx'
-import type { CompetitorRankData, AnalysisResult } from '@/types/competitor-rank'
+import type { CompetitorRankData, AnalysisResult, ClaudeInsight } from '@/types/competitor-rank'
 
 /**
  * 엑셀 파일을 JSON 형태로 변환
@@ -130,33 +130,255 @@ export function analyzeData(data: CompetitorRankData[]): AnalysisResult[] {
 }
 
 /**
- * 분석 결과를 엑셀 파일로 변환
+ * 시간대별 평균 계산 (0 제외)
  */
-export function jsonToExcel(data: AnalysisResult[]): Blob {
-  // 엑셀 형태로 변환할 데이터 준비
-  const excelData = data.map((item) => ({
-    '키워드': item.keyword,
-    '광고영역': item.ad_area,
-    '광고주': item.advertiser,
-    'URL': item.url,
-    '평균 순위': item.average,
-    '최고 시간대': item.peak_hour,
-    '최저 시간대': item.lowest_hour,
-    '분산': item.variance,
-  }))
+function calculateNonZeroAverage(data: CompetitorRankData[]): number {
+  const allHourValues: number[] = []
+
+  data.forEach(item => {
+    for (let i = 0; i < 24; i++) {
+      const hourKey = `hour_${String(i).padStart(2, '0')}` as keyof CompetitorRankData
+      const value = item[hourKey] as number
+      if (value > 0) {
+        allHourValues.push(value)
+      }
+    }
+  })
+
+  if (allHourValues.length === 0) return 0
+  return allHourValues.reduce((sum, val) => sum + val, 0) / allHourValues.length
+}
+
+/**
+ * 광고주별 평균 계산 (0 제외)
+ */
+function calculateAdvertiserAverage(items: CompetitorRankData[]): number {
+  const allValues: number[] = []
+
+  items.forEach(item => {
+    for (let i = 0; i < 24; i++) {
+      const hourKey = `hour_${String(i).padStart(2, '0')}` as keyof CompetitorRankData
+      const value = item[hourKey] as number
+      if (value > 0) {
+        allValues.push(value)
+      }
+    }
+  })
+
+  if (allValues.length === 0) return 0
+  return allValues.reduce((sum, val) => sum + val, 0) / allValues.length
+}
+
+/**
+ * 경쟁 강도 계산 (1~5)
+ */
+function calculateCompetitionIntensity(data: CompetitorRankData[]): number {
+  // 광고주 수와 순위 변동성을 기반으로 경쟁 강도 계산
+  const advertiserCount = new Set(data.map(d => d.advertiser)).size
+  const avgRank = calculateNonZeroAverage(data)
+
+  // 간단한 휴리스틱: 광고주 수가 많고 평균 순위가 낮을수록 경쟁이 치열
+  let intensity = 1
+  if (advertiserCount >= 10) intensity++
+  if (advertiserCount >= 20) intensity++
+  if (avgRank <= 5) intensity++
+  if (avgRank <= 3) intensity++
+
+  return Math.min(intensity, 5)
+}
+
+/**
+ * Dashboard & Insight 시트 생성
+ */
+function createDashboardSheet(
+  rawData: CompetitorRankData[],
+  insight: ClaudeInsight
+): XLSX.WorkSheet {
+  const pcData = rawData.filter(d => d.ad_area === 'PC')
+  const mobileData = rawData.filter(d => d.ad_area === 'Mobile')
+
+  // 매체 비교 데이터
+  const pcAdvertiserCount = new Set(pcData.map(d => d.advertiser)).size
+  const mobileAdvertiserCount = new Set(mobileData.map(d => d.advertiser)).size
+  const pcAvgRank = calculateNonZeroAverage(pcData)
+  const mobileAvgRank = calculateNonZeroAverage(mobileData)
+  const pcIntensity = calculateCompetitionIntensity(pcData)
+  const mobileIntensity = calculateCompetitionIntensity(mobileData)
+
+  // 광고주 비교 데이터
+  const advertiserMap = new Map<string, { pc: CompetitorRankData[], mobile: CompetitorRankData[] }>()
+
+  rawData.forEach(item => {
+    if (!advertiserMap.has(item.advertiser)) {
+      advertiserMap.set(item.advertiser, { pc: [], mobile: [] })
+    }
+    const entry = advertiserMap.get(item.advertiser)!
+    if (item.ad_area === 'PC') {
+      entry.pc.push(item)
+    } else {
+      entry.mobile.push(item)
+    }
+  })
+
+  const advertiserComparison = Array.from(advertiserMap.entries()).map(([advertiser, data]) => {
+    const pcAvg = data.pc.length > 0 ? calculateAdvertiserAverage(data.pc) : 0
+    const mobileAvg = data.mobile.length > 0 ? calculateAdvertiserAverage(data.mobile) : 0
+    return {
+      advertiser,
+      pcAvg: Number(pcAvg.toFixed(1)),
+      mobileAvg: Number(mobileAvg.toFixed(1)),
+      diff: Number(Math.abs(pcAvg - mobileAvg).toFixed(1))
+    }
+  })
+
+  // 워크시트 데이터 배열 생성
+  const sheetData: unknown[][] = []
+
+  // 첫 번째 테이블: 매체 비교
+  sheetData.push(['매체 비교'])
+  sheetData.push(['구분', 'PC', 'Mobile', '차이(절댓값)'])
+  sheetData.push(['전체 광고주 수', pcAdvertiserCount, mobileAdvertiserCount, Math.abs(pcAdvertiserCount - mobileAdvertiserCount)])
+  sheetData.push(['평균 순위', Number(pcAvgRank.toFixed(1)), Number(mobileAvgRank.toFixed(1)), Number(Math.abs(pcAvgRank - mobileAvgRank).toFixed(1))])
+  sheetData.push(['경쟁 강도(1~5)', pcIntensity, mobileIntensity, Math.abs(pcIntensity - mobileIntensity)])
+
+  // 빈 줄
+  sheetData.push([])
+
+  // 두 번째 테이블: 광고주 비교
+  sheetData.push(['광고주 비교'])
+  sheetData.push(['광고주', 'PC 평균 순위', 'Mobile 평균 순위', '차이(절댓값)'])
+  advertiserComparison.forEach(row => {
+    sheetData.push([row.advertiser, row.pcAvg, row.mobileAvg, row.diff])
+  })
+
+  // 빈 줄
+  sheetData.push([])
+
+  // 인사이트 영역
+  sheetData.push(['전체 분석'])
+  sheetData.push([insight.overall_health])
+  sheetData.push([])
+
+  sheetData.push(['매체 비대칭'])
+  sheetData.push([insight.media_asymmetry])
+  sheetData.push([])
+
+  sheetData.push(['순위 변동'])
+  sheetData.push([insight.competitor_dynamics])
+  sheetData.push([])
+
+  sheetData.push(['최적 입찰시간대'])
+  sheetData.push([insight.golden_time])
+  sheetData.push([])
+
+  sheetData.push(['입찰 전략'])
+  sheetData.push([insight.action_items])
 
   // 워크시트 생성
-  const worksheet = XLSX.utils.json_to_sheet(excelData)
+  const worksheet = XLSX.utils.aoa_to_sheet(sheetData)
 
+  // 눈금선 제거
+  if (!worksheet['!gridlines']) {
+    worksheet['!gridlines'] = false
+  }
+
+  return worksheet
+}
+
+/**
+ * Detail Log 시트 생성 (PC 또는 Mobile)
+ */
+function createDetailLogSheet(
+  data: CompetitorRankData[],
+  adArea: 'PC' | 'Mobile'
+): XLSX.WorkSheet {
+  // 해당 매체 데이터만 필터링
+  const filteredData = data.filter(d => d.ad_area === adArea)
+
+  // 평균 순위로 정렬 (오름차순)
+  const sortedData = filteredData.sort((a, b) => {
+    const aAvg = calculateAdvertiserAverage([a])
+    const bAvg = calculateAdvertiserAverage([b])
+    return aAvg - bAvg
+  })
+
+  // 워크시트 데이터 배열 생성
+  const sheetData: unknown[][] = []
+
+  // 테이블 제목
+  sheetData.push(['원본 데이터'])
+
+  // 열 제목
+  const headers = ['순위', '광고주', 'URL', '평균 순위']
+  for (let i = 0; i < 24; i++) {
+    headers.push(`${String(i).padStart(2, '0')}시`)
+  }
+  sheetData.push(headers)
+
+  // 데이터 행
+  sortedData.forEach((item, index) => {
+    const avgRank = calculateAdvertiserAverage([item])
+    const row: unknown[] = [
+      index + 1, // 순위
+      item.advertiser,
+      item.url,
+      Number(avgRank.toFixed(1))
+    ]
+
+    // 시간대별 데이터
+    for (let i = 0; i < 24; i++) {
+      const hourKey = `hour_${String(i).padStart(2, '0')}` as keyof CompetitorRankData
+      const value = item[hourKey] as number
+      row.push(Number(value.toFixed(1)))
+    }
+
+    sheetData.push(row)
+  })
+
+  // 워크시트 생성
+  const worksheet = XLSX.utils.aoa_to_sheet(sheetData)
+
+  // 눈금선 제거
+  if (!worksheet['!gridlines']) {
+    worksheet['!gridlines'] = false
+  }
+
+  return worksheet
+}
+
+/**
+ * 분석 결과를 3개 시트의 엑셀 파일로 변환
+ */
+export function jsonToExcel(
+  rawData: CompetitorRankData[],
+  insight: ClaudeInsight
+): Blob {
   // 워크북 생성
   const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, worksheet, '분석 결과')
+
+  // 1. Dashboard & Insight 시트
+  const dashboardSheet = createDashboardSheet(rawData, insight)
+  XLSX.utils.book_append_sheet(workbook, dashboardSheet, '01_Dashboard_&_Insight')
+
+  // 2. PC Detail Log 시트
+  const pcSheet = createDetailLogSheet(rawData, 'PC')
+  XLSX.utils.book_append_sheet(workbook, pcSheet, '02_PC_Detail_Log')
+
+  // 3. Mobile Detail Log 시트
+  const mobileSheet = createDetailLogSheet(rawData, 'Mobile')
+  XLSX.utils.book_append_sheet(workbook, mobileSheet, '03_Mobile_Detail_Log')
 
   // 바이너리 데이터 생성
-  const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' })
+  const excelBuffer = XLSX.write(workbook, {
+    bookType: 'xlsx',
+    type: 'array',
+    cellStyles: true
+  })
 
   // Blob 생성
-  return new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  return new Blob([excelBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  })
 }
 
 /**
