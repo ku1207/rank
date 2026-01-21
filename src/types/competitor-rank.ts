@@ -55,5 +55,5 @@ export interface ClaudeInsight {
   media_asymmetry: string
   competitor_dynamics: string
   golden_time: string
-  action_items: string
+  action_items: string[]
 }
