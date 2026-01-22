@@ -25,15 +25,15 @@ const ANALYSIS_PROMPT = `## 역할
 
 ## 제약사항
 - 반드시 JSON 형식으로만 출력하세요. (기타 설명 텍스트 금지)
-- 각 분석 항목은 3~5문장으로 구성하며, 구체적인 예시(광고주명, 시간대, 순위 변동폭 등)를 최소 2개 이상 포함하세요.
+- 각 분석 항목은 단일 문장을 여러 개로 나눠서 작성해야 하며, 구체적인 예시(광고주명, 시간대, 순위 변동폭 등)를 최소 2개 이상 포함하세요.
 - 입력 데이터의 명칭을 그대로 기입하지 마세요. (ex. hour_00 -> '오전 0시'으로 변경)
 
 ## 출력 형식 (Strictly JSON)
 {
-  "overall_health": "...",
-  "media_asymmetry": "...",
-  "competitor_dynamics": "...",
-  "golden_time": "...",
+  "overall_health": ["..."],
+  "media_asymmetry": ["..."],
+  "competitor_dynamics": ["..."],
+  "golden_time": ["..."],
   "action_items": [
     "1순위(High Impact): ...",
     "2순위(Efficiency): ...",
