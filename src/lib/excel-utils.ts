@@ -256,19 +256,31 @@ function createDashboardSheet(
 
   // 인사이트 영역
   sheetData.push(['전체 분석'])
-  sheetData.push([insight.overall_health])
+  // overall_health가 배열이므로 각 항목을 개별 행으로 추가
+  insight.overall_health.forEach(item => {
+    sheetData.push([item])
+  })
   sheetData.push([])
 
   sheetData.push(['매체 비대칭'])
-  sheetData.push([insight.media_asymmetry])
+  // media_asymmetry가 배열이므로 각 항목을 개별 행으로 추가
+  insight.media_asymmetry.forEach(item => {
+    sheetData.push([item])
+  })
   sheetData.push([])
 
   sheetData.push(['순위 변동'])
-  sheetData.push([insight.competitor_dynamics])
+  // competitor_dynamics가 배열이므로 각 항목을 개별 행으로 추가
+  insight.competitor_dynamics.forEach(item => {
+    sheetData.push([item])
+  })
   sheetData.push([])
 
   sheetData.push(['최적 입찰시간대'])
-  sheetData.push([insight.golden_time])
+  // golden_time이 배열이므로 각 항목을 개별 행으로 추가
+  insight.golden_time.forEach(item => {
+    sheetData.push([item])
+  })
   sheetData.push([])
 
   sheetData.push(['입찰 전략'])

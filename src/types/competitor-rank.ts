@@ -51,9 +51,9 @@ export interface AnalysisResult {
  * Claude AI 분석 인사이트 타입
  */
 export interface ClaudeInsight {
-  overall_health: string
-  media_asymmetry: string
-  competitor_dynamics: string
-  golden_time: string
+  overall_health: string[]
+  media_asymmetry: string[]
+  competitor_dynamics: string[]
+  golden_time: string[]
   action_items: string[]
 }
