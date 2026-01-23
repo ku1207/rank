@@ -223,8 +223,11 @@ function createDashboardSheet(
   const advertiserComparison = Array.from(advertiserMap.entries()).map(([advertiser, data]) => {
     const pcAvg = data.pc.length > 0 ? calculateAdvertiserAverage(data.pc) : 0
     const mobileAvg = data.mobile.length > 0 ? calculateAdvertiserAverage(data.mobile) : 0
+    // 광고주의 URL 가져오기 (PC 우선, 없으면 Mobile)
+    const url = (data.pc.length > 0 ? data.pc[0].url : data.mobile.length > 0 ? data.mobile[0].url : '')
     return {
       advertiser,
+      url,
       pcAvg: Number(pcAvg.toFixed(1)),
       mobileAvg: Number(mobileAvg.toFixed(1)),
       diff: Number(Math.abs(pcAvg - mobileAvg).toFixed(1))
@@ -246,9 +249,9 @@ function createDashboardSheet(
 
   // 두 번째 테이블: 광고주 비교
   sheetData.push(['광고주 비교'])
-  sheetData.push(['광고주', 'PC 평균 순위', 'Mobile 평균 순위', '차이(절댓값)'])
+  sheetData.push(['광고주', 'URL', 'PC 평균 순위', 'Mobile 평균 순위', '차이(절댓값)'])
   advertiserComparison.forEach(row => {
-    sheetData.push([row.advertiser, row.pcAvg, row.mobileAvg, row.diff])
+    sheetData.push([row.advertiser, row.url, row.pcAvg, row.mobileAvg, row.diff])
   })
 
   // 빈 줄
